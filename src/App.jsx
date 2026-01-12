@@ -28,6 +28,7 @@ import Orders from './pages/Orders';
 import RefurbPipeline from './pages/RefurbPipeline';
 import Customers from './pages/Customers';
 import Complaints from './pages/Complaints';
+import Complaints from './pages/Complaints';
 import Testimonials from './pages/Testimonials';
 import Blogs from './pages/Blogs';
 import Analytics from './pages/Analytics';
