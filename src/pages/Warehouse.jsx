@@ -27,19 +27,15 @@ const Warehouse = ({ warehouses, selectedWarehouse, setSelectedWarehouse, invent
                                     onClick={() => setSelectedWarehouse(wh)}
                                     className="bg-white rounded-[32px] border border-slate-100 p-8 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all cursor-pointer group"
                                 >
-                                    <div className="flex items-start justify-between">
-                                        <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner group-hover:bg-blue-600 group-hover:text-white transition-all"><WarehouseIcon size={28} /></div>
-                                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{wh.id}</span>
+                                    <div className="flex flex-col items-center text-center">
+                                        <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner group-hover:bg-blue-600 group-hover:text-white transition-all mb-6"><WarehouseIcon size={28} /></div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{wh.location}</span>
+                                        <h4 className="text-xl font-black text-slate-800 tracking-tight">{wh.name}</h4>
                                     </div>
-                                    <h4 className="text-xl font-black text-slate-800 mt-6 tracking-tight">{wh.name}</h4>
                                     <div className="mt-8 grid grid-cols-2 gap-4">
-                                        <div className="p-4 bg-slate-50 rounded-2xl text-center">
+                                        <div className="p-4 bg-slate-50 rounded-2xl text-center col-span-2">
                                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Active Stock</p>
                                             <p className="text-lg font-black text-slate-800">{whStock} Units</p>
-                                        </div>
-                                        <div className="p-4 bg-slate-50 rounded-2xl text-center">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Utilization</p>
-                                            <p className="text-lg font-black text-blue-600">{wh.capacity}</p>
                                         </div>
                                     </div>
                                 </div>

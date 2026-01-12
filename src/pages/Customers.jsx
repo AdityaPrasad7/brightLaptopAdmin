@@ -1,11 +1,41 @@
-import React from 'react';
-import { Mail } from 'lucide-react';
+import { Mail, Eye, Download } from 'lucide-react';
+import { exportToExcel, exportToCSV } from '../utils/excelExport';
 
-const Customers = ({ filteredCustomers }) => {
+const Customers = ({ filteredCustomers, onView }) => {
+    const handleExport = (type) => {
+        const data = filteredCustomers.map(c => ({
+            'Customer Name': c.name,
+            'Email Address': c.email,
+            'Type': c.type,
+            'Total Spent': c.totalSpent,
+            'Status': c.status
+        }));
+
+        if (type === 'excel') {
+            exportToExcel(data, 'customers_report');
+        } else {
+            exportToCSV(data, 'customers_report');
+        }
+    };
+
     return (
         <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden animate-in fade-in">
             <div className="p-8 border-b border-slate-50 flex items-center justify-between">
                 <h3 className="text-xl font-black text-slate-800">Customer Intelligence CRM</h3>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => handleExport('excel')}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-green-50 hover:text-green-600 transition-all font-bold text-xs uppercase tracking-wider"
+                    >
+                        <Download size={14} /> Excel
+                    </button>
+                    <button
+                        onClick={() => handleExport('csv')}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-50 text-slate-600 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all font-bold text-xs uppercase tracking-wider"
+                    >
+                        <Download size={14} /> CSV
+                    </button>
+                </div>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-left">
@@ -42,7 +72,7 @@ const Customers = ({ filteredCustomers }) => {
                                     </span>
                                 </td>
                                 <td className="px-8 py-5 text-right">
-                                    <button className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl"><Mail size={16} /></button>
+                                    <button onClick={() => onView(customer)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl"><Eye size={16} /></button>
                                 </td>
                             </tr>
                         ))}

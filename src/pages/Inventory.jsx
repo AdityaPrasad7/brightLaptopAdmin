@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus, Laptop, Star, Edit2, Trash2 } from 'lucide-react';
 
-const Inventory = ({ filteredInventory, setAddModalOpen, warehouses, deleteProduct }) => {
+const Inventory = ({ filteredInventory, setAddModalOpen, warehouses, deleteProduct, onEdit }) => {
     return (
         <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4">
             <div className="p-8 border-b border-slate-50 flex items-center justify-between">
@@ -49,7 +49,7 @@ const Inventory = ({ filteredInventory, setAddModalOpen, warehouses, deleteProdu
                                 <td className="px-8 py-5 text-center font-black text-slate-800 text-lg">{item.count}</td>
                                 <td className="px-8 py-5 text-center font-black text-slate-800">₹{item.price.toLocaleString()}</td>
                                 <td className="px-8 py-5 text-right flex items-center justify-end space-x-2">
-                                    <button className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl"><Edit2 size={16} /></button>
+                                    <button onClick={() => onEdit(item)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-xl"><Edit2 size={16} /></button>
                                     <button onClick={() => deleteProduct(item.id)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-red-500 rounded-xl"><Trash2 size={16} /></button>
                                 </td>
                             </tr>

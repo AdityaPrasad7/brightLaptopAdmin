@@ -2,15 +2,17 @@ import React, { useState, useRef } from 'react';
 import { X, Upload, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useProducts } from '../../hooks/useProducts.js';
 import { useUpload } from '../../hooks/useUpload.js';
+import { useCategories } from '../../hooks/useCategories.js';
 import { validateProductData } from '../../utils/validation.js';
-import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS, DEFAULT_VALUES, FIELD_LABELS } from '../../utils/constants.js';
+import { PRODUCT_CONDITIONS, DEFAULT_VALUES, FIELD_LABELS } from '../../utils/constants.js';
 
-const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
-  const { create, loading: productLoading } = useProducts();
+const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated, productToEdit, warehouses }) => {
+  const { create, update, loading: productLoading } = useProducts();
   const { uploadMultiple, loading: uploadLoading } = useUpload();
-  
+  const { categories, loading: categoriesLoading, createNewCategory } = useCategories();
+
   const fileInputRef = useRef(null);
-  
+
   // Form state - organized by sections
   const [formData, setFormData] = useState({
     // Basic Information (Required)
@@ -18,9 +20,8 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
     description: '',
     images: [],
     brand: '',
-    condition: DEFAULT_VALUES.CONDITION,
     category: '',
-    
+
     // Pricing
     basePrice: '',
     mrp: '',
@@ -30,16 +31,17 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
     gstPercentage: DEFAULT_VALUES.GST_PERCENTAGE,
     moq: DEFAULT_VALUES.MOQ,
     bulkPricing: [],
-    
+
     // Stock & Inventory
     stock: '',
+    warehouseId: '', // Add warehouseId
     soldCount: 0,
-    
+
     // Ratings & Reviews
     rating: DEFAULT_VALUES.RATING,
     reviewsCount: DEFAULT_VALUES.REVIEWS_COUNT,
     liveViewers: DEFAULT_VALUES.LIVE_VIEWERS,
-    
+
     // Specifications
     specifications: {
       screenSize: '',
@@ -53,20 +55,20 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       battery: '',
       adapter: '',
     },
-    
+
     // Configuration Variants
     configurationVariants: [],
-    
+
     // Warranty
     defaultWarranty: DEFAULT_VALUES.DEFAULT_WARRANTY,
     warrantyOptions: [],
-    
+
     // Shipping
     shipping: {
       freeShipping: DEFAULT_VALUES.FREE_SHIPPING,
       estimatedDeliveryDays: DEFAULT_VALUES.ESTIMATED_DELIVERY_DAYS,
     },
-    
+
     // Offers
     offers: {
       exchangeOffer: false,
@@ -75,7 +77,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       bankOffers: false,
     },
   });
-  
+
   // UI State
   const [errors, setErrors] = useState({});
   const [expandedSections, setExpandedSections] = useState({
@@ -88,9 +90,87 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
     offers: false,
   });
   const [uploadedImages, setUploadedImages] = useState([]);
-  
-    if (!isOpen) return null;
-  
+
+  // New Category State
+  const [showCategoryInput, setShowCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+
+
+  // Populate form on Edit
+  React.useEffect(() => {
+    if (isOpen && productToEdit) {
+      setFormData({
+        ...DEFAULT_VALUES, // Base defaults
+        ...productToEdit,  // Override with product data
+        // Handle populated fields (category, warehouseId) if they come as objects
+        category: productToEdit.category?._id || productToEdit.category || '',
+        warehouseId: productToEdit.warehouseId?._id || productToEdit.warehouseId || '',
+      });
+      // If images are already URLs, handle them visually
+      if (productToEdit.images) {
+        setUploadedImages(productToEdit.images.map(url => ({
+          id: url, // Use URL as ID for existing
+          url: url,
+          isExisting: true
+        })));
+      }
+    } else if (isOpen && !productToEdit) {
+      // Reset for Add mode
+      setFormData({
+        name: '',
+        description: '',
+        images: [],
+        brand: '',
+        condition: DEFAULT_VALUES.CONDITION,
+        category: '',
+        basePrice: '',
+        mrp: '',
+        discountPercentage: 0,
+        b2bPrice: '',
+        gstIncluded: DEFAULT_VALUES.GST_INCLUDED,
+        gstPercentage: DEFAULT_VALUES.GST_PERCENTAGE,
+        moq: DEFAULT_VALUES.MOQ,
+        bulkPricing: [],
+        stock: '',
+        warehouseId: '',
+        soldCount: 0,
+        rating: DEFAULT_VALUES.RATING,
+        reviewsCount: DEFAULT_VALUES.REVIEWS_COUNT,
+        liveViewers: DEFAULT_VALUES.LIVE_VIEWERS,
+        specifications: {
+          screenSize: '',
+          resolution: '',
+          screenType: '',
+          processor: '',
+          generation: '',
+          ram: '',
+          storage: '',
+          touch: false,
+          battery: '',
+          adapter: '',
+        },
+        configurationVariants: [],
+        defaultWarranty: DEFAULT_VALUES.DEFAULT_WARRANTY,
+        warrantyOptions: [],
+        shipping: {
+          freeShipping: DEFAULT_VALUES.FREE_SHIPPING,
+          estimatedDeliveryDays: DEFAULT_VALUES.ESTIMATED_DELIVERY_DAYS,
+        },
+        offers: {
+          exchangeOffer: false,
+          exchangeDiscountPercentage: 0,
+          noCostEMI: false,
+          bankOffers: false,
+        },
+      });
+      setUploadedImages([]);
+    }
+  }, [isOpen, productToEdit]);
+
+
+  if (!isOpen) return null;
+
   // Handle input changes
   const handleChange = (field, value) => {
     if (field.includes('.')) {
@@ -108,7 +188,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
         [field]: value,
       }));
     }
-    
+
     // Clear error for this field
     if (errors[field]) {
       setErrors(prev => {
@@ -118,26 +198,26 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       });
     }
   };
-  
+
   // Handle image upload
   const handleImageSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    
+
     // Clear previous upload errors
     setErrors(prev => {
       const newErrors = { ...prev };
       delete newErrors.upload;
       return newErrors;
     });
-    
+
     // Upload images immediately
     const result = await uploadMultiple(files);
-    
+
     if (result.success) {
       // Check response structure - backend returns { success: true, count: N, data: { images: [...] } }
       const images = result.data?.data?.images || result.data?.images || [];
-      
+
       if (images.length > 0) {
         const imageUrls = images.map(img => img.secure_url || img.url);
         setUploadedImages(prev => [...prev, ...imageUrls]);
@@ -159,11 +239,11 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       }));
       console.error('Upload error:', result);
     }
-    
+
     // Reset file input to allow selecting same files again
     e.target.value = '';
   };
-  
+
   // Remove image
   const removeImage = (index) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
@@ -172,7 +252,28 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       images: prev.images.filter((_, i) => i !== index),
     }));
   };
-  
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+
+    const result = await createNewCategory({
+      name: newCategoryName,
+      type: 'USE_CASE', // Default type
+      description: 'Created from Product Modal'
+    });
+
+    if (result.success) {
+      // success - set the new category as selected
+      if (result.data && result.data._id) {
+        handleChange('category', result.data._id);
+      }
+      setShowCategoryInput(false);
+      setNewCategoryName('');
+    } else {
+      setErrors(prev => ({ ...prev, category: result.error }));
+    }
+  };
+
   // Toggle section expansion
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -180,7 +281,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       [section]: !prev[section],
     }));
   };
-  
+
   // Add bulk pricing tier
   const addBulkPricingTier = () => {
     setFormData(prev => ({
@@ -188,7 +289,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       bulkPricing: [...prev.bulkPricing, { minQty: '', price: '' }],
     }));
   };
-  
+
   // Remove bulk pricing tier
   const removeBulkPricingTier = (index) => {
     setFormData(prev => ({
@@ -196,7 +297,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       bulkPricing: prev.bulkPricing.filter((_, i) => i !== index),
     }));
   };
-  
+
   // Update bulk pricing tier
   const updateBulkPricingTier = (index, field, value) => {
     setFormData(prev => ({
@@ -206,7 +307,33 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       ),
     }));
   };
-  
+
+  // Add configuration variant
+  const addConfigurationVariant = () => {
+    setFormData(prev => ({
+      ...prev,
+      configurationVariants: [...prev.configurationVariants, { type: 'RAM', value: '', priceAdjustment: '' }],
+    }));
+  };
+
+  // Remove configuration variant
+  const removeConfigurationVariant = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      configurationVariants: prev.configurationVariants.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Update configuration variant
+  const updateConfigurationVariant = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      configurationVariants: prev.configurationVariants.map((variant, i) =>
+        i === index ? { ...variant, [field]: value } : variant
+      ),
+    }));
+  };
+
   // Add warranty option
   const addWarrantyOption = () => {
     setFormData(prev => ({
@@ -214,7 +341,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       warrantyOptions: [...prev.warrantyOptions, { duration: '', price: '' }],
     }));
   };
-  
+
   // Remove warranty option
   const removeWarrantyOption = (index) => {
     setFormData(prev => ({
@@ -222,7 +349,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       warrantyOptions: prev.warrantyOptions.filter((_, i) => i !== index),
     }));
   };
-  
+
   // Update warranty option
   const updateWarrantyOption = (index, field, value) => {
     setFormData(prev => ({
@@ -232,18 +359,24 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       ),
     }));
   };
-  
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate form data
     const validation = validateProductData(formData);
     if (!validation.isValid) {
       setErrors({ general: validation.errors.join(', ') });
       return;
     }
-    
+
+    // Explicitly validate warehouse
+    if (!formData.warehouseId) {
+      setErrors({ general: 'Please select a warehouse' });
+      return;
+    }
+
     // Prepare data for API
     const productData = {
       name: formData.name.trim(),
@@ -251,11 +384,12 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       images: formData.images,
       basePrice: Number(formData.basePrice),
       stock: Number(formData.stock),
-      category: formData.category.trim().toLowerCase(),
-      
+      warehouseId: formData.warehouseId || null,
+      category: formData.category, // Send ID directly
+      condition: 'refurbished', // Force condition
+
       // Optional fields
       ...(formData.brand && { brand: formData.brand.trim() }),
-      ...(formData.condition && { condition: formData.condition }),
       ...(formData.mrp && { mrp: Number(formData.mrp) }),
       ...(formData.discountPercentage !== undefined && { discountPercentage: Number(formData.discountPercentage) }),
       ...(formData.b2bPrice && { b2bPrice: Number(formData.b2bPrice) }),
@@ -293,10 +427,17 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       }),
       ...(formData.offers && { offers: formData.offers }),
     };
-    
-    // Create product
-    const result = await create(productData);
-    
+
+    // Create or Update product
+    let result;
+    if (productToEdit) {
+      // Use _id if available (from backend), else id
+      const productId = productToEdit._id || productToEdit.id;
+      result = await update(productId, productData);
+    } else {
+      result = await create(productData);
+    }
+
     if (result.success) {
       // Reset form
       setFormData({
@@ -315,6 +456,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
         moq: DEFAULT_VALUES.MOQ,
         bulkPricing: [],
         stock: '',
+        warehouseId: '',
         soldCount: 0,
         rating: DEFAULT_VALUES.RATING,
         reviewsCount: DEFAULT_VALUES.REVIEWS_COUNT,
@@ -347,7 +489,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       });
       setUploadedImages([]);
       setErrors({});
-      
+
       // Close modal and notify parent
       setAddModalOpen(false);
       if (onProductCreated) {
@@ -357,11 +499,11 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
       setErrors({ general: result.error });
     }
   };
-  
+
   const isLoading = productLoading || uploadLoading;
 
-    return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 animate-in fade-in duration-300 overflow-y-auto">
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 animate-in fade-in duration-300 overflow-y-auto" >
       <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-4xl my-8 overflow-hidden">
         {/* Header */}
         <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 sticky top-0 z-10">
@@ -374,7 +516,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
             <X size={24} />
           </button>
         </div>
-        
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
           {/* General Error */}
@@ -383,14 +525,14 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
               {errors.general}
             </div>
           )}
-          
+
           {/* Upload Error */}
           {errors.upload && (
             <div className="p-4 bg-red-50 text-red-600 text-sm font-bold rounded-2xl border border-red-100">
               {errors.upload}
             </div>
           )}
-          
+
           {/* Basic Information Section */}
           <Section
             title="Basic Information"
@@ -412,7 +554,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('name', e.target.value)}
                 />
               </div>
-              
+
               {/* Description */}
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
@@ -426,7 +568,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('description', e.target.value)}
                 />
               </div>
-              
+
               {/* Brand */}
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
@@ -440,42 +582,83 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('brand', e.target.value)}
                 />
               </div>
-              
+
               {/* Condition & Category */}
+              {/* Warehouse & Category */}
               <div className="grid grid-cols-2 gap-4">
+                {/* Warehouse Selection */}
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
-                    {FIELD_LABELS.CONDITION}
-                  </label>
-                  <select
-                    className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 focus:bg-white transition-all font-bold"
-                    value={formData.condition}
-                    onChange={(e) => handleChange('condition', e.target.value)}
-                  >
-                    {PRODUCT_CONDITIONS.map(cond => (
-                      <option key={cond.value} value={cond.value}>{cond.label}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
-                    {FIELD_LABELS.CATEGORY} <span className="text-red-500">*</span>
+                    Warehouse Node <span className="text-red-500">*</span>
                   </label>
                   <select
                     required
                     className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 focus:bg-white transition-all font-bold"
-                    value={formData.category}
-                    onChange={(e) => handleChange('category', e.target.value)}
+                    value={formData.warehouseId}
+                    onChange={(e) => handleChange('warehouseId', e.target.value)}
                   >
-                    <option value="">Select Category</option>
-                    {PRODUCT_CATEGORIES.map(cat => (
-                      <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+                    <option value="">Select Warehouse</option>
+                    {warehouses && warehouses.map(wh => (
+                      <option key={wh.id} value={wh.id}>{wh.name} ({wh.location})</option>
                     ))}
                   </select>
                 </div>
+
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+                    {FIELD_LABELS.CATEGORY} <span className="text-red-500">*</span>
+                  </label>
+
+                  {showCategoryInput ? (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="flex-1 px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 focus:bg-white transition-all font-bold"
+                        placeholder="New Category Name"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCreateCategory())}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreateCategory}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowCategoryInput(false); setNewCategoryName(''); }}
+                        className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      required
+                      className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 focus:bg-white transition-all font-bold"
+                      value={formData.category}
+                      onChange={(e) => {
+                        if (e.target.value === 'NEW') {
+                          setShowCategoryInput(true);
+                        } else {
+                          handleChange('category', e.target.value);
+                        }
+                      }}
+                    >
+                      <option value="">{categoriesLoading ? 'Loading...' : 'Select Category'}</option>
+                      {categories && categories.map(cat => (
+                        <option key={cat._id || cat.slug} value={cat._id}>{cat.name}</option>
+                      ))}
+                      <option value="NEW" className="font-bold text-blue-600 bg-blue-50">+ Add New Category</option>
+                    </select>
+                  )}
+                  {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
+                </div>
               </div>
-              
+
               {/* Images - Required */}
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
@@ -501,7 +684,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                       {uploadLoading ? 'Uploading Images...' : 'Upload Images'}
                     </span>
                   </button>
-                  
+
                   {/* Uploaded Images Preview */}
                   {uploadedImages.length > 0 && (
                     <div className="grid grid-cols-4 gap-3">
@@ -527,7 +710,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
               </div>
             </div>
           </Section>
-          
+
           {/* Pricing Section */}
           <Section
             title="Pricing"
@@ -552,7 +735,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                     onChange={(e) => handleChange('basePrice', e.target.value)}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                     {FIELD_LABELS.STOCK} <span className="text-red-500">*</span>
@@ -568,7 +751,9 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   />
                 </div>
               </div>
-              
+
+
+
               {/* MRP & Discount */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -585,7 +770,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                     onChange={(e) => handleChange('mrp', e.target.value)}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                     {FIELD_LABELS.DISCOUNT_PERCENTAGE}
@@ -601,7 +786,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   />
                 </div>
               </div>
-              
+
               {/* B2B Price & MOQ */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -618,7 +803,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                     onChange={(e) => handleChange('b2bPrice', e.target.value)}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                     {FIELD_LABELS.MOQ}
@@ -633,7 +818,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   />
                 </div>
               </div>
-              
+
               {/* GST */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center space-x-3">
@@ -648,7 +833,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                     {FIELD_LABELS.GST_INCLUDED}
                   </label>
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                     {FIELD_LABELS.GST_PERCENTAGE}
@@ -664,7 +849,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   />
                 </div>
               </div>
-              
+
               {/* Bulk Pricing */}
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -711,7 +896,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
               </div>
             </div>
           </Section>
-          
+
           {/* Ratings & Reviews Section */}
           <Section
             title="Ratings & Reviews"
@@ -734,7 +919,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                     onChange={(e) => handleChange('soldCount', e.target.value)}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                     {FIELD_LABELS.RATING}
@@ -751,7 +936,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   />
                 </div>
               </div>
-              
+
               {/* Reviews Count & Live Viewers */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -767,7 +952,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                     onChange={(e) => handleChange('reviewsCount', e.target.value)}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                     {FIELD_LABELS.LIVE_VIEWERS}
@@ -784,7 +969,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
               </div>
             </div>
           </Section>
-          
+
           {/* Specifications Section */}
           <Section
             title="Specifications"
@@ -804,7 +989,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('specifications.screenSize', e.target.value)}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                   {FIELD_LABELS.RESOLUTION}
@@ -817,7 +1002,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('specifications.resolution', e.target.value)}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                   Screen Type
@@ -830,7 +1015,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('specifications.screenType', e.target.value)}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                   {FIELD_LABELS.PROCESSOR}
@@ -843,7 +1028,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('specifications.processor', e.target.value)}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                   Generation
@@ -856,7 +1041,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('specifications.generation', e.target.value)}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                   {FIELD_LABELS.RAM}
@@ -869,7 +1054,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('specifications.ram', e.target.value)}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                   {FIELD_LABELS.STORAGE}
@@ -882,7 +1067,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('specifications.storage', e.target.value)}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                   {FIELD_LABELS.BATTERY}
@@ -895,7 +1080,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('specifications.battery', e.target.value)}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                   Adapter
@@ -908,7 +1093,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('specifications.adapter', e.target.value)}
                 />
               </div>
-              
+
               <div className="flex items-center space-x-3">
                 <input
                   type="checkbox"
@@ -923,7 +1108,66 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
               </div>
             </div>
           </Section>
-          
+
+          {/* Configuration Variants Section */}
+          <Section
+            title="Configuration Variants"
+            expanded={expandedSections.specifications} // Share expansion state with specifications
+            onToggle={() => toggleSection('specifications')}
+          >
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                    Variants (RAM / Storage)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addConfigurationVariant}
+                    className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors flex items-center space-x-1"
+                  >
+                    <Plus size={14} />
+                    <span>Add Variant</span>
+                  </button>
+                </div>
+                {formData.configurationVariants.map((variant, index) => (
+                  <div key={index} className="grid grid-cols-4 gap-3 mb-2">
+                    <select
+                      className="px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-blue-500 font-bold"
+                      value={variant.type}
+                      onChange={(e) => updateConfigurationVariant(index, 'type', e.target.value)}
+                    >
+                      <option value="RAM">RAM</option>
+                      <option value="STORAGE">Storage</option>
+                    </select>
+                    <input
+                      type="text"
+                      className="px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-blue-500 font-bold"
+                      placeholder="Value (e.g. 16GB)"
+                      value={variant.value}
+                      onChange={(e) => updateConfigurationVariant(index, 'value', e.target.value)}
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-blue-500 font-bold"
+                      placeholder="Price Adj. (+/-)"
+                      value={variant.priceAdjustment}
+                      onChange={(e) => updateConfigurationVariant(index, 'priceAdjustment', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeConfigurationVariant(index)}
+                      className="px-4 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Section>
+
           {/* Warranty Section */}
           <Section
             title="Warranty"
@@ -943,7 +1187,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   onChange={(e) => handleChange('defaultWarranty', e.target.value)}
                 />
               </div>
-              
+
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
@@ -988,7 +1232,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
               </div>
             </div>
           </Section>
-          
+
           {/* Shipping Section */}
           <Section
             title="Shipping"
@@ -1008,7 +1252,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   {FIELD_LABELS.FREE_SHIPPING}
                 </label>
               </div>
-              
+
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
                   {FIELD_LABELS.ESTIMATED_DELIVERY_DAYS}
@@ -1024,7 +1268,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
               </div>
             </div>
           </Section>
-          
+
           {/* Offers Section */}
           <Section
             title="Offers"
@@ -1044,7 +1288,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   {FIELD_LABELS.EXCHANGE_OFFER}
                 </label>
               </div>
-              
+
               {formData.offers.exchangeOffer && (
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
@@ -1061,7 +1305,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   />
                 </div>
               )}
-              
+
               <div className="flex items-center space-x-3">
                 <input
                   type="checkbox"
@@ -1074,7 +1318,7 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                   {FIELD_LABELS.NO_COST_EMI}
                 </label>
               </div>
-              
+
               <div className="flex items-center space-x-3">
                 <input
                   type="checkbox"
@@ -1086,10 +1330,10 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
                 <label htmlFor="bankOffers" className="text-sm font-bold text-slate-700">
                   {FIELD_LABELS.BANK_OFFERS}
                 </label>
-                </div>
-                    </div>
+              </div>
+            </div>
           </Section>
-          
+
           {/* Submit Button */}
           <div className="pt-6 border-t border-slate-100">
             <button
@@ -1097,13 +1341,13 @@ const ProductModal = ({ isOpen, setAddModalOpen, onProductCreated }) => {
               disabled={isLoading}
               className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase tracking-widest text-xs flex items-center justify-center shadow-xl hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Creating Product...' : 'Create Product'}
+              {isLoading ? 'Processing...' : (productToEdit ? 'Update Product' : 'Create Product')}
             </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
+          </div>
+        </form>
+      </div>
+    </div >
+  );
 };
 
 // Section Component for collapsible sections
@@ -1123,8 +1367,8 @@ const Section = ({ title, expanded, onToggle, children }) => {
           {children}
         </div>
       )}
-        </div>
-    );
+    </div>
+  );
 };
 
 export default ProductModal;
