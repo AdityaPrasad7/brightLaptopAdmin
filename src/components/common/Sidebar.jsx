@@ -10,7 +10,8 @@ import {
     FileText,
     BarChart3,
     LogOut,
-    Laptop
+    Laptop,
+    AlertCircle
 } from 'lucide-react';
 
 const SidebarItem = ({ icon, label, isSidebarOpen, onClick, active }) => (
@@ -34,6 +35,7 @@ const Sidebar = ({ isSidebarOpen, activeTab, setActiveTab, handleLogout, setSear
         { id: 'orders', label: 'Orders', icon: <ShoppingCart size={20} /> },
         { id: 'refurb', label: 'Refurbishment', icon: <Wrench size={20} /> },
         { id: 'customers', label: 'Customers', icon: <Users size={20} /> },
+        { id: 'complaints', label: 'Complaints', icon: <AlertCircle size={20} /> },
         { id: 'testimonials', label: 'Testimonials', icon: <MessageSquareQuote size={20} /> },
         { id: 'blogs', label: 'Blogs', icon: <FileText size={20} /> },
         { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={20} /> },
