@@ -69,7 +69,11 @@ const ShipModal = ({ isOpen, setShipModalOpen, order, onSuccess }) => {
         setLoading(false);
 
         if (result.success) {
-            alert(`Shipment Created via ${selectedCourier.courier_name}! AWB Generated.`);
+            if (result.warning) {
+                alert(`Shipment Created, but AWB Generation Failed:\n${result.warning}\n\nPlease check your Shiprocket account (e.g., KYC status).`);
+            } else {
+                alert(`Shipment Created via ${selectedCourier.courier_name}!\nAWB Generated and Tracking updated on Dashboard.`);
+            }
             setShipModalOpen(false);
             if (onSuccess) onSuccess();
         } else {

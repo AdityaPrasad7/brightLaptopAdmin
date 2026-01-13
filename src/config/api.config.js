@@ -52,6 +52,7 @@ const API_CONFIG = {
       GET_BY_ID: (id) => `/laptops/orders/${id}`,
       UPDATE: (id) => `/laptops/orders/${id}`,
       UPDATE_STATUS: (id) => `/laptops/orders/${id}/status`,
+      INVOICE: (id) => `/laptops/orders/${id}/invoice`,
     },
 
     // Support / Complaints

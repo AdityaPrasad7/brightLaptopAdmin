@@ -54,3 +54,26 @@ export const updateOrderStatus = async (orderId, status) => {
         };
     }
 };
+
+/**
+ * Get invoice data
+ * @param {string} orderId
+ * @returns {Promise} Response with invoice data
+ */
+export const getInvoice = async (orderId) => {
+    try {
+        const response = await axiosInstance.get(
+            API_CONFIG.ENDPOINTS.ORDERS.INVOICE(orderId)
+        );
+        return {
+            success: true,
+            data: response.data?.data,
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.response?.data?.message || error.message || 'Failed to fetch invoice',
+            details: error.response?.data,
+        };
+    }
+};

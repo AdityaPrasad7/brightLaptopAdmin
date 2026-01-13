@@ -391,6 +391,7 @@ const App = () => {
       {activeTab === 'complaints' && <Complaints />}
       {activeTab === 'testimonials' && <Testimonials testimonials={testimonials} setTestimonialModalOpen={setTestimonialModalOpen} />}
       {activeTab === 'blogs' && <Blogs blogs={blogs} authUser={authUser} setBlogToEdit={setBlogToEdit} setBlogForm={setBlogForm} setBlogModalOpen={setBlogModalOpen} setBlogs={setBlogs} />}
+      {activeTab === 'complaints' && <Complaints />}
       {activeTab === 'analytics' && <Analytics analyticsData={analyticsData} reportTimeframe={reportTimeframe} setReportTimeframe={setReportTimeframe} filteredOrdersByTime={filteredOrdersByTime} />}
 
       <SimpleToast />

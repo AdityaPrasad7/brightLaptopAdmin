@@ -56,7 +56,7 @@ const Warehouse = ({ warehouses, selectedWarehouse, setSelectedWarehouse, invent
                                     <th className="px-8 py-5">Laptop Asset</th>
                                     <th className="px-8 py-5 text-center">Config</th>
                                     <th className="px-8 py-5 text-center">Stock</th>
-                                    <th className="px-8 py-5 text-right">Status</th>
+                                    {/* <th className="px-8 py-5 text-right">Status</th> */}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -65,9 +65,9 @@ const Warehouse = ({ warehouses, selectedWarehouse, setSelectedWarehouse, invent
                                         <td className="px-8 py-5 font-black text-slate-800 text-base">{item.brand} {item.model}</td>
                                         <td className="px-8 py-5 text-center font-bold text-slate-600">{item.ram} / {item.ssd}</td>
                                         <td className="px-8 py-5 text-center font-black text-slate-800 text-lg">{item.count}</td>
-                                        <td className="px-8 py-5 text-right">
+                                        {/* <td className="px-8 py-5 text-right">
                                             <span className="px-3 py-1 bg-green-50 text-green-600 rounded-lg text-[10px] font-black uppercase tracking-widest">{item.status}</span>
-                                        </td>
+                                        </td> */}
                                     </tr>
                                 ))}
                             </tbody>

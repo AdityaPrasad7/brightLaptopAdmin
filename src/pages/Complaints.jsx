@@ -35,12 +35,8 @@ const Complaints = () => {
     const fetchComplaints = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_BASE_URL}/laptops/support/complaints`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+
+            const response = await axiosInstance.get(API_CONFIG.ENDPOINTS.COMPLAINTS.GET_ALL);
             if (response.data.success) {
                 setComplaints(response.data.data.complaints || []);
             }
@@ -53,15 +49,9 @@ const Complaints = () => {
 
     const handleStatusUpdate = async (complaintId, newStatus) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.put(
-                `${API_BASE_URL}/laptops/support/complaints/${complaintId}/status`,
-                { status: newStatus },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
+            const response = await axiosInstance.put(
+                API_CONFIG.ENDPOINTS.COMPLAINTS.UPDATE_STATUS(complaintId),
+                { status: newStatus }
             );
             if (response.data.success) {
                 fetchComplaints();
@@ -106,7 +96,7 @@ const Complaints = () => {
     const filteredComplaints = complaints.filter(complaint => {
         const matchesStatus = statusFilter === 'ALL' || complaint.status === statusFilter;
         const matchesCategory = categoryFilter === 'ALL' || complaint.category === categoryFilter;
-        const matchesSearch = searchTerm === '' || 
+        const matchesSearch = searchTerm === '' ||
             complaint.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             complaint.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             complaint.userId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -450,11 +440,10 @@ const Complaints = () => {
                                             key={status}
                                             onClick={() => handleStatusUpdate(selectedComplaint._id, status)}
                                             disabled={selectedComplaint.status === status}
-                                            className={`px-4 py-3 rounded-xl font-bold text-sm transition-all ${
-                                                selectedComplaint.status === status
-                                                    ? 'bg-blue-500 text-white cursor-not-allowed'
-                                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                            }`}
+                                            className={`px-4 py-3 rounded-xl font-bold text-sm transition-all ${selectedComplaint.status === status
+                                                ? 'bg-blue-500 text-white cursor-not-allowed'
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                }`}
                                         >
                                             {status.replace('_', ' ')}
                                         </button>
