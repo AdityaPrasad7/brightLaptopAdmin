@@ -3,7 +3,7 @@ import './App.css';
 
 // Data & Constants
 import { STAGES } from './data/constants';
-import {
+import { 
   INITIAL_INVENTORY,
   INITIAL_ORDERS,
   INITIAL_REFURB,
@@ -26,8 +26,8 @@ import Inventory from './pages/Inventory';
 import WarehousePage from './pages/Warehouse';
 import Orders from './pages/Orders';
 import RefurbPipeline from './pages/RefurbPipeline';
+import RefurbishmentRequests from './pages/RefurbishmentRequests';
 import Customers from './pages/Customers';
-import Complaints from './pages/Complaints';
 import Complaints from './pages/Complaints';
 import Testimonials from './pages/Testimonials';
 import Blogs from './pages/Blogs';
@@ -64,7 +64,7 @@ const App = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [reportTimeframe, setReportTimeframe] = useState('monthly');
   const [selectedWarehouse, setSelectedWarehouse] = useState(null);
-
+  
   // --- Data State ---
   const [inventory, setInventory] = useState([]); // Start empty for live data
   // const [orders, setOrders] = useState(INITIAL_ORDERS); // Replaced by useOrders hook
@@ -74,14 +74,14 @@ const App = () => {
 
   // const [warehouses, setWarehouses] = useState(INITIAL_WAREHOUSES); // Replaced by hook
   const [customers, setCustomers] = useState([]); // Start empty for live data
-
+  
   // --- Modals State ---
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [isWHModalOpen, setWHModalOpen] = useState(false);
   const [isShipModalOpen, setShipModalOpen] = useState(false);
   const [isTestimonialModalOpen, setTestimonialModalOpen] = useState(false);
   const [isBlogModalOpen, setBlogModalOpen] = useState(false);
-
+  
   // --- Target States for Actions ---
   const [shippingTargetOrder, setShippingTargetOrder] = useState(null);
   const [blogToEdit, setBlogToEdit] = useState(null);
@@ -110,7 +110,7 @@ const App = () => {
     const checkAuth = () => {
       const token = localStorage.getItem('token');
       const userStr = localStorage.getItem('user');
-
+      
       if (token && userStr) {
         try {
           const user = JSON.parse(userStr);
@@ -124,7 +124,7 @@ const App = () => {
         }
       }
     };
-
+    
     checkAuth();
   }, []);
 
@@ -211,9 +211,9 @@ const App = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setAuthError('');
-
+    
     const result = await apiLogin(loginForm.email, loginForm.password);
-
+    
     if (result.success) {
       setIsLoggedIn(true);
       setAuthUser(result.data.user);
@@ -282,7 +282,7 @@ const App = () => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       const result = await removeProduct(id);
       if (result.success) {
-        setInventory(prev => prev.filter(item => item.id !== id));
+    setInventory(prev => prev.filter(item => item.id !== id));
         alert('Product deleted successfully'); // Replace with Toast if available
       } else {
         alert('Failed to delete product: ' + result.error);
@@ -294,7 +294,7 @@ const App = () => {
     e.preventDefault();
     const success = await addWarehouse(newWarehouse);
     if (success) {
-      setWHModalOpen(false);
+    setWHModalOpen(false);
       setNewWarehouse({ name: '', address: '', location: '', manager: '', contact: '', stock: 0 });
     }
   };
@@ -385,22 +385,10 @@ const App = () => {
         />}
       {activeTab === 'warehouse' && <WarehousePage warehouses={warehouses} selectedWarehouse={selectedWarehouse} setSelectedWarehouse={setSelectedWarehouse} inventory={inventory} setWHModalOpen={setWHModalOpen} />}
       {activeTab === 'orders' && <Orders orders={orders} setShippingTargetOrder={setShippingTargetOrder} setShipModalOpen={setShipModalOpen} />}
+      {activeTab === 'refurbRequests' && <RefurbishmentRequests />}
       {activeTab === 'refurb' && <RefurbPipeline refurbPipeline={refurbPipeline} updateRefurbStage={updateRefurbStage} />}
-      {activeTab === 'customers' &&
-        <Customers
-          filteredCustomers={filteredCustomers}
-          onView={(customer) => {
-            setSelectedCustomer(customer);
-            setActiveTab('customer_details');
-          }}
-        />
-      }
-      {activeTab === 'customer_details' &&
-        <CustomerDetails
-          customer={selectedCustomer}
-          onBack={() => setActiveTab('customers')}
-        />
-      }
+      {activeTab === 'customers' && <Customers filteredCustomers={filteredCustomers} />}
+      {activeTab === 'complaints' && <Complaints />}
       {activeTab === 'testimonials' && <Testimonials testimonials={testimonials} setTestimonialModalOpen={setTestimonialModalOpen} />}
       {activeTab === 'blogs' && <Blogs blogs={blogs} authUser={authUser} setBlogToEdit={setBlogToEdit} setBlogForm={setBlogForm} setBlogModalOpen={setBlogModalOpen} setBlogs={setBlogs} />}
       {activeTab === 'analytics' && <Analytics analyticsData={analyticsData} reportTimeframe={reportTimeframe} setReportTimeframe={setReportTimeframe} filteredOrdersByTime={filteredOrdersByTime} />}

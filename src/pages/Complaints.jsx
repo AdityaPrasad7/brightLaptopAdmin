@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, Clock, XCircle, Filter, Search, User, Package, ShoppingCart } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, XCircle, Filter, Search, User, Package, ShoppingCart, Volume2 } from 'lucide-react';
 import axios from 'axios';
 
 
 const API_BASE_URL = 'http://localhost:5000/api';
+
+// Helper function to format Cloudinary video URL for audio playback
+const formatAudioUrl = (url) => {
+    if (!url) return url;
+    // If it's a Cloudinary URL and doesn't have format parameter, add it
+    if (url.includes('cloudinary.com') && url.includes('/video/')) {
+        // Ensure the URL has proper format for audio playback
+        if (!url.includes('/f_')) {
+            // Add format parameter if not present
+            const separator = url.includes('?') ? '&' : '?';
+            return `${url}${separator}f_webm`;
+        }
+    }
+    return url;
+};
 
 const Complaints = () => {
     const [complaints, setComplaints] = useState([]);
@@ -183,9 +198,28 @@ const Complaints = () => {
                                 filteredComplaints.map(complaint => (
                                     <tr key={complaint._id} className="hover:bg-slate-50/50">
                                         <td className="px-8 py-5">
-                                            <p className="font-semibold text-slate-800 line-clamp-1 max-w-md">
-                                                {complaint.description}
-                                            </p>
+                                            <div className="flex items-start gap-2">
+                                                {complaint.voiceMessage && (
+                                                    <Volume2 size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    {complaint.description ? (
+                                                        <p className="font-semibold text-slate-800 line-clamp-1 max-w-md">
+                                                            {complaint.description}
+                                                        </p>
+                                                    ) : (
+                                                        <p className="font-semibold text-slate-800 line-clamp-1 max-w-md italic">
+                                                            Voice message only
+                                                        </p>
+                                                    )}
+                                                    {complaint.voiceMessage && (
+                                                        <p className="text-xs text-blue-600 mt-1 flex items-center">
+                                                            <Volume2 size={10} className="mr-1" />
+                                                            Voice message attached
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
                                             {complaint.orderId && (
                                                 <p className="text-xs text-slate-400 mt-1 flex items-center">
                                                     <ShoppingCart size={12} className="mr-1" />
@@ -315,10 +349,82 @@ const Complaints = () => {
                                         <p className="text-xs text-slate-400">Category</p>
                                         <p className="font-semibold text-slate-800">{selectedComplaint.category}</p>
                                     </div>
-                                    <div>
-                                        <p className="text-xs text-slate-400">Description</p>
-                                        <p className="text-slate-800 whitespace-pre-wrap">{selectedComplaint.description}</p>
-                                    </div>
+                                    {selectedComplaint.description && (
+                                        <div>
+                                            <p className="text-xs text-slate-400">Description</p>
+                                            <p className="text-slate-800 whitespace-pre-wrap">{selectedComplaint.description}</p>
+                                        </div>
+                                    )}
+                                    {selectedComplaint.voiceMessage && (
+                                        <div>
+                                            <p className="text-xs text-slate-400 mb-2 flex items-center">
+                                                <Volume2 size={12} className="mr-1" />
+                                                Voice Message
+                                            </p>
+                                            <div className="bg-white rounded-lg p-3 border border-slate-200">
+                                                {/* Use video element for Cloudinary audio files (stored as video resource) */}
+                                                <video 
+                                                    controls 
+                                                    className="w-full"
+                                                    preload="metadata"
+                                                    crossOrigin="anonymous"
+                                                    style={{ maxHeight: '60px' }}
+                                                    onError={(e) => {
+                                                        console.error('Video playback error:', e);
+                                                        // Fallback: try with audio element
+                                                        const audioUrl = formatAudioUrl(selectedComplaint.voiceMessage);
+                                                        const audio = document.createElement('audio');
+                                                        audio.src = audioUrl;
+                                                        audio.controls = true;
+                                                        audio.className = 'w-full';
+                                                        e.target.parentElement.appendChild(audio);
+                                                        e.target.style.display = 'none';
+                                                    }}
+                                                >
+                                                    <source src={formatAudioUrl(selectedComplaint.voiceMessage)} type="video/webm" />
+                                                    <source src={selectedComplaint.voiceMessage} type="video/webm" />
+                                                    <source src={selectedComplaint.voiceMessage} type="audio/webm" />
+                                                    Your browser does not support the audio element.
+                                                </video>
+                                                <div className="flex items-center justify-between mt-2">
+                                                    <a
+                                                        href={selectedComplaint.voiceMessage}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        download
+                                                        className="text-xs text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+                                                    >
+                                                        <Volume2 size={12} />
+                                                        Download audio file
+                                                    </a>
+                                                    <button
+                                                        onClick={() => {
+                                                            const audioUrl = formatAudioUrl(selectedComplaint.voiceMessage);
+                                                            const audio = new Audio(audioUrl);
+                                                            audio.play().catch(err => {
+                                                                console.error('Error playing audio:', err);
+                                                                // Try with original URL
+                                                                const audio2 = new Audio(selectedComplaint.voiceMessage);
+                                                                audio2.play().catch(err2 => {
+                                                                    console.error('Error playing audio with original URL:', err2);
+                                                                    alert('Unable to play audio. Please try downloading the file.');
+                                                                });
+                                                            });
+                                                        }}
+                                                        className="text-xs text-blue-600 hover:text-blue-700 inline-flex items-center gap-1"
+                                                    >
+                                                        <Volume2 size={12} />
+                                                        Play in new player
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {!selectedComplaint.description && !selectedComplaint.voiceMessage && (
+                                        <div>
+                                            <p className="text-slate-500 italic text-sm">No description or voice message provided</p>
+                                        </div>
+                                    )}
                                     <div>
                                         <p className="text-xs text-slate-400">Status</p>
                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border ${getStatusColor(selectedComplaint.status)}`}>
